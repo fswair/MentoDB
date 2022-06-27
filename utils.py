@@ -76,15 +76,16 @@ class Fetch:
             data = self.cursor.fetchone()
             if not data:
                 return None
-            return self.format(tuple(data))
+            return self.format(data)
     def all(self):
         data = self.cursor.fetchall()
         return self.format(data)
     
-    def format(self, values: (tuple | tuple[tuple])) -> (dict | list[dict]):
-        multiple = True if iterable(values) and len(values) > 0 and iterable(values[0]) else False
+    def format(self, values: list[tuple]) -> list[dict]:
+        multiple = True if iterable(values) and len(values) > 0 and iterable(values[0]) and not type(values[0]) == str else False
         if iterable(values) and len(values) > 0 and not iterable(values[0]) and not len(self.columns) == len(values):
             raise Exception("You have to give a value list has size same with column size.")
+        
         else:
             if multiple:
                 results = list()

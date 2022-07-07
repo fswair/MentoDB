@@ -1,7 +1,10 @@
 ### WORKING WITH BASE MODELS ###
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
 ## CREATING MODEL EXTENDED FROM BASE MODEL ##
+
+@dataclass
 class MyModel(BaseModel):
     id: int
     name: str
@@ -24,6 +27,7 @@ cursor.create("sample_table", model=MyModel)
 
 # PRIMARY KEY
 
+@dataclass
 class PrimaryKeySample(BaseModel):
     id: PrimaryKey(int).set_primary()
     name: str
@@ -35,6 +39,7 @@ cursor.create("primary_sample", model=PrimaryKeySample)
 
 # UNIQUE MATCHES
 
+@dataclass
 class Sample(BaseModel):
     id: PrimaryKey(int).set_primary()
     name: str
@@ -44,7 +49,7 @@ class Sample(BaseModel):
 
 # Now we've a match, if we have to insert some data and these datas protected with UniqueMatch type;
 # We give check_model parameter (if we want to check matches), then it will check gaven datas;
-# If table has matched data, insert process will be stopped.
+# If table has matched data, insert process gonna be stopped.
 cursor.create("unique_matches_sample", model=Sample)
 
 cursor.check_model = Sample
@@ -102,6 +107,24 @@ cursor.select("sample", filter=lambda id: id % 3 == 0)
 # Returns all rows matched with regexp patterns (regexp dict must be one key as column name, value could be pattern or list of pattern.)
 # Sample Output: list[dict] -> [{id: 999, name: fswair, age: 18, price: 4250}]
 cursor.select("sample", regexp={"id": ["\d{1,3}"] })
+
+# Response Formatters for Select Statement
+
+# JSON Response
+# Returns data as JSON
+cursor.select("table", as_json=True)
+
+# DataFrame Response (Pandas)
+# Returns DataFrame
+cursor.select("table", as_dataframe=True)
+
+# CSV Response
+# Returns data as CSV
+cursor.select("table", as_dataframe=True).to_csv()
+
+# Model Response
+# Returns object list (accessible with attributes)
+cursor.select("table", model=Sample, as_model=True)
 
 # UPDATE #
 

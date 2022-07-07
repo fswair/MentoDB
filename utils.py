@@ -1,11 +1,16 @@
+from audioop import mul
+import json
+from lib2to3.pytree import Base
 import logging
 import sqlite3
-from typing import TypeAlias
+from pandas import DataFrame
+from typing import Any, TypeAlias, TypeVar
 from re import search
 import typing
 from numpy import iterable
 from inspect import signature
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from .models import DefaultModel
 from .connection import MentoConnection
 
@@ -51,7 +56,7 @@ class PrimaryKey:
 class UniqueMatch:
     def __init__(self, *args: typing.Iterable):
         self.args: typing.List[str] = args
-    def set_match(self):
+    def set_match(self) -> typing.TypeVar:
         """A method to set unique matches in table. (Multiple Primary Key)"""
         arg_text = "-".join([str(arg) for arg in self.args])
         type_base: str = f"{UniqueMatch.__name__}[{arg_text}]"
@@ -76,15 +81,16 @@ class Fetch:
             data = self.cursor.fetchone()
             if not data:
                 return None
-            return self.format(tuple(data))
+            return self.format(data)
     def all(self):
         data = self.cursor.fetchall()
         return self.format(data)
     
-    def format(self, values: (tuple | tuple[tuple])) -> (dict | list[dict]):
-        multiple = True if iterable(values) and len(values) > 0 and iterable(values[0]) else False
+    def format(self, values: list[tuple]) -> list[dict]:
+        multiple = True if iterable(values) and len(values) > 0 and iterable(values[0]) and not type(values[0]) == str else False
         if iterable(values) and len(values) > 0 and not iterable(values[0]) and not len(self.columns) == len(values):
             raise Exception("You have to give a value list has size same with column size.")
+        
         else:
             if multiple:
                 results = list()
@@ -101,12 +107,96 @@ class Fetch:
                 return response
 
 
+class MentoExceptions:
+    def __init__(self, logging: bool = False):
+        self.logging = logging
+
+        self.wrong_data_model = lambda: self.auto("Given model and data (list[dict]) not matched with together.\nPlease check your data and model then try again.")
+    
+    def auto(self, message: str) -> "None | BaseException":
+        if self.logging:
+            logging.error(message)
+        else:
+            raise BaseException(message)
+
+
+@dataclass
+class AutoResponse:
+    def __init__(self, model = None, datas: list[dict] = None):
+        self.status: bool = False
+        if model and datas:
+            self.model: type = model
+            self.datas: list[dict] = datas
+            self.status = True if iterable(datas) and type(datas) == list and datas and type(datas[0]) == dict and datas[0] else False
+            self.err = MentoExceptions()
+            if not self.status:
+                self.err.wrong_data_model()  
+            self.sign: dict = self.model.__pydantic_model__.schema()
+            self.properties: dict = self.sign.get("properties")
+            self.attrs: list = sorted(list(self.properties.keys()))
+            self.keys:  list = sorted(list(datas[0].keys()))
+
+    def get_response(self) -> list[object]:
+        self.models: list[self.model] = list()
+        if not self.status:
+            self.err.auto("Your data was wrong thats why i cant return any data response.")
+        for i, data in enumerate(self.datas):
+            data_keys = sorted(list(data.keys()))
+            if not data_keys == self.attrs:
+                self.err.auto(f"The dict with id {i + 1} is incorrect. Please give just ``same type`` data dicts.")
+            else:
+                x = self.__class__()
+                for k, v in data.items():
+                    if str(k[0]).isdigit():
+                        k = str(f"w{k}")
+                    setattr(x, k, v)
+                self.models.append(x)
+        return self.models
+
+class Static:
+    def __init__(self, datas: list[dict], model: BaseModel = None, as_model: bool = False, as_json: bool = False, as_dataframe: bool = False) -> None:
+        self.datas = datas
+        self.basemodel = model
+        self.as_model = as_model
+        self.as_json = as_json
+        self.as_dataframe = as_dataframe
+        self.data = self.set()
+
+    def set(self, value: Any = None):
+        if self.as_model:
+            return self.model()
+        elif self.as_json:
+            return self.json()
+        elif self.as_dataframe:
+            return self.dataframe()
+        return self.datas
+    
+    def model(self):
+        response = AutoResponse(model=self.basemodel, datas=self.datas)
+        return response.get_response()
+    
+    def json(self):
+        return json.dumps(self.datas)
+
+    
+    def dataframe(self, data_dict: dict = dict()):
+        if not self.datas:
+            return
+        for k in self.datas[0].keys():
+            data_dict[k] = [data.get(k) for data in self.datas]
+        if not data_dict:
+            return
+        return DataFrame(data_dict)
+        
+
+
 class Mento:
-    def __init__(self, connection: "MentoConnection" = None, default_table: str = None, check_model: BaseModel = None):
+    def __init__(self, connection: "MentoConnection" = None, default_table: str = None, check_model: BaseModel = None, error_logging: bool = False):
         """MentoDB is powerful database engine for sqlite3. You have many options to use, specially basic things, also lambda filters, regular expressions included."""
         self.connection: "MentoConnection" = connection
         self.default_table: str = default_table
         self.check_model: BaseModel = check_model
+        self.exceptions = MentoExceptions(error_logging)
     
     def create(self, table: str = None, model: BaseModel = DefaultModel, exists_check: bool = True):
         """Create a table with your BaseModel."""
@@ -166,8 +256,7 @@ class Mento:
                 if arg not in fetch.columns:
                     raise BaseException("Args are not same with your table.")
                 value = f"{arg} = {data[arg]}" if type(data[arg]) in (int, float) else f"{arg} = '{data[arg]}'"
-                conditions.append(value)
-            
+                conditions.append(value)        
             where_query = " and ".join(conditions)
 
             if conditions:
@@ -227,8 +316,11 @@ class Mento:
 
     
     
-    def select(self, from_table: str = None, where: dict = None, order_by: Column = None, filter: Lambda = None, regexp: dict[str, str|list[str]] = None, select_all: bool = True, select_column: str = None):
-        """Select matched or all columns as lists include Python dict."""
+    def select(self, from_table: str = None, model: BaseModel = None, where: dict = None, order_by: Column = None, filter: Lambda = None, regexp: dict[str, str|list[str]] = None, select_all: bool = True, select_column: str = None, as_model: bool = False, as_dataframe: bool = False, as_json: bool = False):
+        """Select matched or all columns as lists include Python dict or custom formats (Detailed in Tests)."""
+        config = dict(model=model, as_model=as_model, as_json=as_json, as_dataframe=as_dataframe)
+        if as_model and not model:
+            raise self.exceptions.auto("If you want to get models you have to specify data model.")
         if not from_table:
             from_table = self.default_table
         if order_by:
@@ -240,8 +332,8 @@ class Mento:
             fetch = Fetch(self.connection.cursor(), table=from_table)
             for key, value in where.items():
                 if key not in fetch.columns:
-                    raise BaseException(f"Your table has no column named `{key}`")
-                if type(value) == int:
+                    raise self.exceptions.auto(f"Your table has no column named `{key}`")
+                if type(value) in (int, float):
                     value = value
                 else:
                     value = f"'{value}'"
@@ -250,16 +342,19 @@ class Mento:
             cursor = self.connection.execute(f"SELECT {'*' if select_all and not select_column else select_column} FROM {from_table} where {where_statement} {additions} ")
             fetch = Fetch(cursor)
             if select_all:
-                return fetch.all()
-            return fetch.first()
+                response = Static(fetch.all(), **config)
+                return response.data
+            response = Static(fetch.first(), **config)
+            return response.data
         if not regexp and not filter:
             query = self.connection.execute(f"SELECT {'*' if select_all and not select_column else select_column} FROM {from_table} {additions}")
             fetch = Fetch(query)
-            return fetch.all()
+            response = Static(fetch.all(), **config)
+            return response.data
         else:
             if filter:
                 if not callable(filter):
-                    raise Exception("Filter must be lambda with one argument, also this filter is not callable.")
+                    raise self.exceptions.auto("Filter must be lambda with one argument, also this filter is not callable.")
                 else:
                     query = self.connection.execute(f"SELECT *  FROM {from_table} {additions}")
                     fetch = Fetch(query)
@@ -269,11 +364,12 @@ class Mento:
                         filter_args = filter.__code__.co_varnames
                         data_index = filter_args[0] if iterable(filter_args) and len(filter_args) > 0 else -1
                         if data_index == -1:
-                            raise Exception("No argument supplied to filter. Please, specifiy column name as argument.")
+                            raise self.exceptions.auto("No argument supplied to filter. Please, specifiy column name as argument.")
                         else:
                             if filter(data[data_index]):
                                 matches.append(data)
-                    return matches   
+                    response = Static(matches, **config)
+                    return response.data
             elif regexp:
                 query = self.connection.execute(f"SELECT *  FROM {from_table} {additions}")
                 fetch = Fetch(query)
@@ -289,7 +385,8 @@ class Mento:
                                     has_match = self.regexp(regex, str(data[fetch.columns[fetch.columns.index(column)]]))
                                     if has_match:
                                         matches.append(data)
-                    return matches
+                    response = Static(matches, **config)
+                    return response.data
                 else:
                     if iterable(regexp[column]):
                         for regex in regexp[column]:
@@ -297,13 +394,15 @@ class Mento:
                             has_match = self.regexp(regex, str(data))
                             if has_match:
                                 matches.append(data)
-                    return matches
+                    response = Static(matches, **config)
+                    return response.data
 
             if select_all:
                 fetch = Fetch(f"SELECT * FROM {from_table}")
-                return fetch.all()
+                response = Static(matches, **config)
+                return response.data
     
-    def delete(self, table: str, where: dict, delete_all: bool = False):
+    def delete(self, table: str, where: dict = dict(), delete_all: bool = False):
         """Delete matched or all columns."""
         if delete_all:
             self.connection.execute(f"DELETE FROM {table}")
@@ -329,3 +428,36 @@ class Mento:
         """If pattern has a match with given string, returns True, else return False."""
         match = search(pattern, str(string))
         return bool(match)
+
+@dataclass
+class AutoResponse:
+    def __init__(self, model = None, datas: list[dict] = None):
+        self.status: bool = False
+        self.err = MentoExceptions()
+        if model and datas:
+            self.model: type = model
+            self.datas: list[dict] = datas
+            self.status = True if iterable(datas) and type(datas) == list and datas and type(datas[0]) == dict and datas[0] else False
+            if not self.status:
+                self.err.wrong_data_model()  
+            self.sign: dict = self.model.__pydantic_model__.schema()
+            self.properties: dict = self.sign.get("properties")
+            self.attrs: list = sorted(list(self.properties.keys()))
+            self.keys:  list = sorted(list(datas[0].keys()))
+
+    def get_response(self) -> list[object]:
+        self.models: list[self.model] = list()
+        if not self.status:
+            self.err.auto("Your data was wrong thats why i cant return any data response.")
+        for i, data in enumerate(self.datas):
+            data_keys = sorted(list(data.keys()))
+            if not data_keys == self.attrs:
+                self.err.auto(f"The dict with id {i + 1} is incorrect. Please give just ``same type`` data dicts.")
+            else:
+                x = self.__class__()
+                for k, v in data.items():
+                    if str(k[0]).isdigit():
+                        k = str(f"w{k}")
+                    setattr(x, k, v)
+                self.models.append(x)
+        return self.models

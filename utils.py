@@ -29,11 +29,10 @@ class Column:
                 is_primary = True
                 type = search(".+?~PrimaryKey-(.+)", type)[1]
             addition = "primary key" if is_primary else ""
-            match (type.strip()):
-                case "int"|"float":
-                    self.arg = f"{column} int {addition}"
-                case _:
-                    self.arg = f"{column} text {addition}"
+            if type.stripy() in ("int", "float"):
+                self.arg = f"{column} int {addition}"
+            else:
+                self.arg = f"{column} text {addition}"
         else:
             self.arg = f"{self.alphanum(arg)} text"
     def alphanum(self, arg: str):

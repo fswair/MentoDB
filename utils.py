@@ -29,7 +29,7 @@ class Column:
                 is_primary = True
                 type = search(".+?~PrimaryKey-(.+)", type)[1]
             addition = "primary key" if is_primary else ""
-            if type.stripy() in ("int", "float"):
+            if type.strip() in ("int", "float"):
                 self.arg = f"{column} int {addition}"
             else:
                 self.arg = f"{column} text {addition}"

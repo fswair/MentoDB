@@ -28,20 +28,17 @@ class Column:
             self.unique_args = search("UniqueMatch\[(.+)\]", str(arg))[1].split("-")
             self.has_unique_check = bool(self.unique_args)
         if match:
-            column, type = match.groups()
-            if search("PrimaryKey", type):
+            column, _type = match.groups()
+            if search("PrimaryKey", _type):
                 is_primary = True
-                type = search(".+?~PrimaryKey-(.+)", type)[1]
+                _type = search(".+?~PrimaryKey-(.+)", _type)[1]
             addition = "primary key" if is_primary else ""
-<<<<<<< HEAD
-            if unique_columns and column.lower().strip() in unique_columns:
-                addition += "UNIQUE"
-=======
-            if type.strip() in ("int", "float"):
+            if _type.strip() in ("int", "float"):
                 self.arg = f"{column} int {addition}"
             else:
                 self.arg = f"{column} text {addition}"
->>>>>>> ceab76e6528b8fbdbf5e5f77b463130b86bc6201
+            if unique_columns and column.lower().strip() in unique_columns:
+                addition += "UNIQUE"
         else:
             self.arg = f"{self.alphanum(arg)} text"
 

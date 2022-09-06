@@ -33,13 +33,15 @@ class Column:
                 is_primary = True
                 type = search(".+?~PrimaryKey-(.+)", type)[1]
             addition = "primary key" if is_primary else ""
+<<<<<<< HEAD
             if unique_columns and column.lower().strip() in unique_columns:
                 addition += "UNIQUE"
-            match (type.strip()):
-                case "int" | "float":
-                    self.arg = f"{column} int {addition}"
-                case _:
-                    self.arg = f"{column} text {addition}"
+=======
+            if type.strip() in ("int", "float"):
+                self.arg = f"{column} int {addition}"
+            else:
+                self.arg = f"{column} text {addition}"
+>>>>>>> ceab76e6528b8fbdbf5e5f77b463130b86bc6201
         else:
             self.arg = f"{self.alphanum(arg)} text"
 

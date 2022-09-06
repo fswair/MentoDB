@@ -4,6 +4,7 @@ from pydantic.dataclasses import dataclass
 
 ## CREATING MODEL EXTENDED FROM BASE MODEL ##
 
+
 @dataclass
 class MyModel(BaseModel):
     id: int
@@ -11,9 +12,11 @@ class MyModel(BaseModel):
     job: str
     price: int
 
+
 ## CREATING SQL TABLE WITH MODEL ##
 
-from MentoDB import *
+from __MentoDB import *
+
 # Firstly, we have to initialize a connection with using MentoConnection (same as "sqlite3.Connection")
 con = MentoConnection("./database/new.db", check_same_thread=False)
 
@@ -27,6 +30,7 @@ cursor.create("sample_table", model=MyModel)
 
 # PRIMARY KEY
 
+
 @dataclass
 class PrimaryKeySample(BaseModel):
     id: PrimaryKey(int).set_primary()
@@ -34,10 +38,12 @@ class PrimaryKeySample(BaseModel):
     age: int
     price: int
 
+
 # Now we created a table looking like (id int primary key, name text, job text, price int)
 cursor.create("primary_sample", model=PrimaryKeySample)
 
 # UNIQUE MATCHES
+
 
 @dataclass
 class Sample(BaseModel):
@@ -46,6 +52,7 @@ class Sample(BaseModel):
     age: int
     price: int
     check_match: UniqueMatch("id", "name").set_match()
+
 
 # Now we've a match, if we have to insert some data and these datas protected with UniqueMatch type;
 # We give check_model parameter (if we want to check matches), then it will check gaven datas;
@@ -64,38 +71,28 @@ cursor.create("sample", model=Sample)
 cursor.create("sample", model=Sample, exists_check=False)
 
 # Creates many table (table_name: TableModel)
-cursor.create_many(
-    dict(first=MyModel, second=PrimaryKeySample, third=Sample)
-)
+cursor.create_many(dict(first=MyModel, second=PrimaryKeySample, third=Sample))
 
 # INSERT #
 cursor.insert(
     "sample",
-    data=dict(id = 1, name = "fswair", age = 18, price = 4250),
+    data=dict(id=1, name="fswair", age=18, price=4250),
     # if your model has UniqueMatch control and you want to check matches, set a model by check_model keyword argument.
-    check_model=Sample
+    check_model=Sample,
 )
 
 # SELECT #
 
-# Returns all rows as list[dict] -> [{id: 1, name: fswair, age: 18, price: 4250}] 
+# Returns all rows as list[dict] -> [{id: 1, name: fswair, age: 18, price: 4250}]
 cursor.select("sample")
 
 # Returns all rows matched with where condition. Condition looking like (in SQL);
 # "SELECT * FROM TABLE WHERE id = 1 AND name = 'fswair'"
-cursor.select("sample", where={
-    "id": 1,
-    "name": "fswair"
-})
+cursor.select("sample", where={"id": 1, "name": "fswair"})
 
 # Returns all rows matched with where condition sorted as ORDER BY. Condition looking like (in SQL);
 # "SELECT * FROM TABLE WHERE id = 1 AND name = 'fswair' ORDER BY id"
-cursor.select("sample", where={
-    "id": 1,
-    "name": "fswair"
-},
-order_by="id"
-)
+cursor.select("sample", where={"id": 1, "name": "fswair"}, order_by="id")
 
 # Returns all row's id columns as list[dict] -> [{id: 1}, {id: 2}]
 cursor.select("sample", select_column="id")
@@ -106,7 +103,7 @@ cursor.select("sample", filter=lambda id: id % 3 == 0)
 
 # Returns all rows matched with regexp patterns (regexp dict must be one key as column name, value could be pattern or list of pattern.)
 # Sample Output: list[dict] -> [{id: 999, name: fswair, age: 18, price: 4250}]
-cursor.select("sample", regexp={"id": ["\d{1,3}"] })
+cursor.select("sample", regexp={"id": ["\d{1,3}"]})
 
 # Response Formatters for Select Statement
 
@@ -129,7 +126,9 @@ cursor.select("table", model=Sample, as_model=True)
 # UPDATE #
 
 # Updates the data matched with where condition.
-cursor.update("sample", data=dict(id=2, name="fswair", age=19, price=10000), where=dict(id=1))
+cursor.update(
+    "sample", data=dict(id=2, name="fswair", age=19, price=10000), where=dict(id=1)
+)
 
 # Updates all of the data with same value.
 cursor.update("sample", data=dict(price=10000), update_all=True)

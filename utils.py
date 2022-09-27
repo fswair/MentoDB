@@ -33,14 +33,17 @@ class Column:
                 is_primary = True
                 _type = search(".+?~PrimaryKey-(.+)", _type)[1]
             addition = "primary key" if is_primary else ""
+            if unique_columns and column.lower().strip() in unique_columns:
+                addition = "UNIQUE"
             if _type.strip() in ("int", "float"):
                 self.arg = f"{column} int {addition}"
             else:
                 self.arg = f"{column} text {addition}"
-            if unique_columns and column.lower().strip() in unique_columns:
-                addition += "UNIQUE"
+
         else:
             self.arg = f"{self.alphanum(arg)} text"
+
+        self.arg = self.arg.lower()
 
     def alphanum(self, arg: str):
         data = [letter for letter in arg if letter.isalnum()]
@@ -262,6 +265,8 @@ class Mento:
         """Create a table with your BaseModel."""
         if not table:
             table = self.default_table
+        if not model:
+            model = self.check_model
         parameters = list(signature(model).parameters.values())
         columns = list()
         for param in parameters:
@@ -270,7 +275,6 @@ class Mento:
                 columns.append(column.arg)
         create_query = ", ".join(columns)
         if exists_check:
-            # addition_query = "" if not unique_columns else f'UNIQUE({",".join(unique_columns)})'
             self.connection.execute(
                 f"CREATE TABLE IF NOT EXISTS {table} ({create_query})"
             )
@@ -333,10 +337,11 @@ class Mento:
                 cursor = self.connection.execute(
                     f"SELECT * FROM {table} where {where_query}"
                 )
+
                 fetch = Fetch(cursor)
                 first_data = fetch.first()
                 if first_data:
-                    return "unique-match"
+                    return first_data
 
         query = ""
         index = 0
@@ -377,7 +382,10 @@ class Mento:
                 else:
                     value = f"'{value}'"
                 conditions.append(f"{key} = {value}")
-            where_statement = " and ".join(conditions).strip()
+            if len(conditions) == 1:
+                where_statement = conditions[0]
+            else:
+                where_statement = " and ".join(conditions).strip()
 
         if not table:
             table = self.default_table
@@ -390,11 +398,8 @@ class Mento:
         if update_all:
             self.connection.execute(f"UPDATE {table} SET {update_query}")
         else:
-            print(f"UPDATE {table} SET {update_query} where {where_statement} ")
-            print(
-                self.connection.execute(
-                    f"UPDATE {table} SET {update_query} where {where_statement} "
-                ).fetchall()
+            data = self.connection.execute(
+                f"UPDATE {table} SET {update_query} where {'' if not where_statement else where_statement}"
             )
 
     def select(
@@ -403,6 +408,7 @@ class Mento:
         model: BaseModel = None,
         where: dict = None,
         order_by: Column = None,
+        limit: int = 0,
         filter: Lambda = None,
         regexp: dict[str, str | list[str]] = None,
         select_all: bool = True,
@@ -419,12 +425,15 @@ class Mento:
             raise self.exceptions.auto(
                 "If you want to get models you have to specify data model."
             )
+        additions = ""
         if not from_table:
             from_table = self.default_table
         if order_by:
-            additions = f"ORDER BY {order_by}"
-        else:
-            additions = ""
+            additions += f"ORDER BY {order_by}"
+
+        if limit > 0:
+            additions += f" LIMIT {limit}"
+
         if where:
             conditions = list()
             fetch = Fetch(self.connection.cursor(), table=from_table)

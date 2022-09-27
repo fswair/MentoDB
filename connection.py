@@ -1,12 +1,12 @@
 from sqlite3 import connect
 import sqlite3
-from typing import overload
 
 
-@overload(sqlite3.Connection)
-class MentoConnection(object):
-    def __init__(self, *args, **kwargs):
-        self.connection: sqlite3.Connection = connect(*args, **kwargs)
+class MentoConnection:
+    def __init__(self, database: str = "./database.db", check_same_thread=False):
+        self.connection: sqlite3.Connection = connect(
+            database=database, check_same_thread=check_same_thread
+        )
 
     def cursor(self):
         return self.connection.cursor()

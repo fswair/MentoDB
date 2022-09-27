@@ -15,8 +15,6 @@ class MyModel(BaseModel):
 
 ## CREATING SQL TABLE WITH MODEL ##
 
-from __MentoDB import *
-
 # Firstly, we have to initialize a connection with using MentoConnection (same as "sqlite3.Connection")
 con = MentoConnection("./database/new.db", check_same_thread=False)
 

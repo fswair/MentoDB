@@ -49,30 +49,32 @@ class Column:
         data = [letter for letter in arg if letter.isalnum()]
         return "".join(data)
 
-
 class PrimaryKey:
-    """A PrimaryKey statement to set columns as PrimaryKey"""
-
-    def __init__(self, _type: type):
-        self._type = _type
-        self.__name__ = "primary key"
-
-    def set_primary(self) -> typing.TypeVar:
-        """A method to set columns as primary key."""
-        type_base: str = f"{PrimaryKey.__name__}-{self._type.__name__}"
-        return typing.TypeVar(f"{type_base}", self._type, bytes)
+    def __new__(self, _type: type) -> typing.TypeVar:
+        """A PrimaryKey statement to set columns as PrimaryKey"""
+        type_base: str = f"{PrimaryKey.__name__}-{_type.__name__}"
+        return typing.TypeVar(f"{type_base}", _type, bytes)
 
 
 class UniqueMatch:
-    def __init__(self, *args: typing.Iterable):
-        """A matching tool to set one or many columns as unique."""
-        self.args: typing.List[str] = args
-
-    def set_match(self) -> typing.TypeVar:
-        """A method to set unique matches in table. (Multiple Primary Key)"""
-        arg_text = "-".join([str(arg) for arg in self.args])
+    def __new__(self, *args: typing.Iterable) -> typing.TypeVar:
+        """A matching tool to set one or many columns as unique. (Multiple Primary Key)"""
+        args: typing.List[str]
+        arg_text = "-".join([str(arg) for arg in args])
         type_base: str = f"{UniqueMatch.__name__}[{arg_text}]"
         return typing.TypeVar(f"{type_base}", str, str)
+
+
+class Sequence:
+    def __new__(self, seperators: str = ","):
+        type_base = f"{Sequence.__name__}[seperators='{seperators}']"
+        return typing.TypeVar(f"{type_base}", str, bytes)
+
+
+class JsonString:
+    def __new__(self):
+        type_base = f"{JsonString.__name__}"
+        return typing.TypeVar(f"{type_base}", str, bytes)
 
 
 class Fetch:

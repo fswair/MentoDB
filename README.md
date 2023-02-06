@@ -2,7 +2,7 @@
 Sqlite3 based powerful database project.
 
 #### Requirements:
-* `Python 3.6 or greater version`
+* `Python 3.9.6 or greater version`
 * `pydantic` -> `pip install pydantic`
 * `pandas` -> `pip install pandas`
 * `numpy` -> `pip install numpy`

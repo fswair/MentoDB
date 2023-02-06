@@ -2,13 +2,16 @@
 Sqlite3 based powerful database project.
 
 #### Requirements:
-* `python 3.6 or greater version`
-* `pydantic -> pip install pydantic`
+* `Python 3.6 or greater version`
+* `pydantic` -> `pip install pydantic`
+* `pandas` -> `pip install pandas`
+* `numpy` -> `pip install numpy`
 
-> Import these two module before start:
+* Import these two module before start:
 ```python
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass```
+from pydantic.dataclasses import dataclass
+```
 
 ## Working with Base Models
 The following code demonstrates how to work with base models in Python using `pydantic` and `dataclasses`.

@@ -43,7 +43,7 @@ Primary Key:
 ```python
 @dataclass
 class PrimaryKeySample(BaseModel):
-    id: PrimaryKey(int).set_primary()
+    id: PrimaryKey(int)
     name: str
     age: int
     price: int
@@ -55,11 +55,11 @@ Unique Matches:
 ```python
 @dataclass
 class Sample(BaseModel):
-    id: PrimaryKey(int).set_primary()
+    id: PrimaryKey(int)
     name: str
     age: int
     price: int
-    check_match: UniqueMatch("id", "name").set_match()
+    check_match: UniqueMatch("id", "name")
 
 # Create a table with unique match control.
 cursor.create("unique_matches_sample", model=Sample)

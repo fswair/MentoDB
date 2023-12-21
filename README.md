@@ -1,6 +1,14 @@
 # MentoDB
 Sqlite3 based powerful database project.
 
+# Install with pip just one step
+
+```cmd
+pip3 install mentodb
+```
+also;
+[PyPI Page for MentoDB](https://pypi.org/project/mentodb)
+
 #### Requirements:
 * `Python 3.9.6 or greater version`
 * `pydantic` -> `pip install pydantic`

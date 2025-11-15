@@ -3,12 +3,12 @@ import sqlite3
 from typing import Self
 
 
-class MentoConnection:
+class Connection:
     """
     Modern SQLite connection wrapper with context manager support.
 
     Example:
-        with MentoConnection("mydb.db") as conn:
+        with Connection("mydb.db") as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users")
     """

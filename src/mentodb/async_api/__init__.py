@@ -1,4 +1,4 @@
 """Async database operations."""
-from .connection import AsyncMentoConnection
+from .connection import AsyncConnection
 
-__all__ = ["AsyncMentoConnection"]
+__all__ = ["AsyncConnection"]

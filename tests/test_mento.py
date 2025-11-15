@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 import pytest
 from pydantic import BaseModel
-from connection import MentoConnection
+from connection import Connection
 from utils import Mento, PrimaryKey
 
 
@@ -24,7 +24,7 @@ class TestMento:
             db_path = tmp.name
 
         try:
-            conn = MentoConnection(db_path)
+            conn = Connection(db_path)
             mento = Mento(conn, default_table="users")
             mento.create("users", model=TestModel)
 
@@ -42,7 +42,7 @@ class TestMento:
             db_path = tmp.name
 
         try:
-            conn = MentoConnection(db_path)
+            conn = Connection(db_path)
             mento = Mento(conn, default_table="users")
             mento.create("users", model=TestModel)
 
@@ -65,7 +65,7 @@ class TestMento:
             db_path = tmp.name
 
         try:
-            conn = MentoConnection(db_path)
+            conn = Connection(db_path)
             mento = Mento(conn, default_table="users")
             mento.create("users", model=TestModel)
             mento.insert("users", data={"id": 1, "name": "Alice", "age": 30})
@@ -87,7 +87,7 @@ class TestMento:
             db_path = tmp.name
 
         try:
-            conn = MentoConnection(db_path)
+            conn = Connection(db_path)
             mento = Mento(conn, default_table="users")
             mento.create("users", model=TestModel)
             mento.insert("users", data={"id": 1, "name": "Alice", "age": 30})
@@ -109,7 +109,7 @@ class TestMento:
             db_path = tmp.name
 
         try:
-            conn = MentoConnection(db_path)
+            conn = Connection(db_path)
             mento = Mento(conn, default_table="users")
             mento.create("users", model=TestModel)
 

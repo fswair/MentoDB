@@ -10,7 +10,7 @@ from inspect import signature
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 from .models import DefaultModel
-from .connection import MentoConnection
+from .connection import Connection
 
 Str: TypeAlias = str
 Lambda: TypeAlias = "function"
@@ -263,13 +263,13 @@ class Static:
 class Mento:
     def __init__(
         self,
-        connection: "MentoConnection" = None,
+        connection: "Connection" = None,
         default_table: str = None,
         check_model: BaseModel = None,
         error_logging: bool = False,
     ):
         """MentoDB is powerful database engine for sqlite3. You have many options to use, specially basic things, also lambda filters, regular expressions included."""
-        self.connection: "MentoConnection" = connection
+        self.connection: "Connection" = connection
         self.default_table: str = default_table
         self.check_model: BaseModel = check_model
         self.exceptions = MentoExceptions(error_logging)

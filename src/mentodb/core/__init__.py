@@ -1,5 +1,5 @@
 """Core ORM functionality."""
-from .connection import MentoConnection
+from .connection import Connection
 from .models import DefaultModel
 from .orm import (
     Mento,
@@ -13,7 +13,7 @@ from .orm import (
 )
 
 __all__ = [
-    "MentoConnection",
+    "Connection",
     "DefaultModel",
     "Mento",
     "PrimaryKey",

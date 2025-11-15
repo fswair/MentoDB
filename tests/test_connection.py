@@ -1,13 +1,13 @@
-"""Tests for MentoConnection class."""
+"""Tests for Connection class."""
 import tempfile
 import sqlite3
 from pathlib import Path
 import pytest
-from connection import MentoConnection
+from connection import Connection
 
 
-class TestMentoConnection:
-    """Test suite for MentoConnection."""
+class TestConnection:
+    """Test suite for Connection."""
 
     def test_connection_creation(self):
         """Test basic connection creation."""
@@ -15,7 +15,7 @@ class TestMentoConnection:
             db_path = tmp.name
 
         try:
-            conn = MentoConnection(db_path)
+            conn = Connection(db_path)
             assert conn.connection is not None
             assert isinstance(conn.connection, sqlite3.Connection)
             conn.close()
@@ -28,13 +28,13 @@ class TestMentoConnection:
             db_path = tmp.name
 
         try:
-            with MentoConnection(db_path) as conn:
+            with Connection(db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
                 conn.commit()
 
             # Verify table was created and connection closed
-            with MentoConnection(db_path) as conn:
+            with Connection(db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                 tables = cursor.fetchall()
@@ -48,7 +48,7 @@ class TestMentoConnection:
             db_path = tmp.name
 
         try:
-            with MentoConnection(db_path) as conn:
+            with Connection(db_path) as conn:
                 conn.execute("CREATE TABLE users (id INTEGER, name TEXT)")
                 conn.execute(
                     "INSERT INTO users VALUES (?, ?)",
@@ -68,20 +68,20 @@ class TestMentoConnection:
 
         try:
             # Create initial table
-            with MentoConnection(db_path) as conn:
+            with Connection(db_path) as conn:
                 conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
                 conn.execute("INSERT INTO test VALUES (1)")
 
             # Try to insert duplicate (should rollback)
             try:
-                with MentoConnection(db_path) as conn:
+                with Connection(db_path) as conn:
                     conn.execute("INSERT INTO test VALUES (2)")
                     conn.execute("INSERT INTO test VALUES (1)")  # Duplicate!
             except sqlite3.IntegrityError:
                 pass
 
             # Verify rollback happened
-            with MentoConnection(db_path) as conn:
+            with Connection(db_path) as conn:
                 cursor = conn.execute("SELECT COUNT(*) FROM test")
                 count = cursor.fetchone()[0]
                 assert count == 1  # Only original row should exist

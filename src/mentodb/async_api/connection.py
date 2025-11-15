@@ -3,12 +3,12 @@ import aiosqlite
 from typing import Self
 
 
-class AsyncMentoConnection:
+class AsyncConnection:
     """
     Async SQLite connection wrapper with context manager support.
 
     Example:
-        async with AsyncMentoConnection("mydb.db") as conn:
+        async with AsyncConnection("mydb.db") as conn:
             cursor = await conn.cursor()
             await cursor.execute("SELECT * FROM users")
     """

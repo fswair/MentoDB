@@ -6,7 +6,7 @@ Version: 2.1
 Structure: SQLITE3
 
 New in 2.1:
-- Async support (AsyncMentoConnection)
+- Async support (AsyncConnection)
 - Query Builder with fluent API
 - Database migrations
 - Connection pooling
@@ -19,7 +19,7 @@ New in 2.1:
 # Core components
 from .core import (
     Mento,
-    MentoConnection,
+    Connection,
     PrimaryKey,
     Column,
     Fetch,
@@ -31,7 +31,7 @@ from .core import (
 )
 
 # Async support
-from .async_api import AsyncMentoConnection
+from .async_api import AsyncConnection
 
 # Query building
 from .query import QueryBuilder
@@ -59,11 +59,15 @@ from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 from typing import TypeVar
 
-__version__ = "2.1.0"
+# Backward compatibility aliases (deprecated, will be removed in v3.0)
+MentoConnection = Connection
+AsyncMentoConnection = AsyncConnection
+
+__version__ = "2.1.1"
 __all__ = [
-    # Core
+    # Core (new clean names)
     "Mento",
-    "MentoConnection",
+    "Connection",
     "PrimaryKey",
     "Column",
     "Fetch",
@@ -74,7 +78,7 @@ __all__ = [
     "DefaultModel",
     "BaseModel",
     # Async
-    "AsyncMentoConnection",
+    "AsyncConnection",
     # Query building
     "QueryBuilder",
     # Database management
@@ -88,4 +92,7 @@ __all__ = [
     "BulkOperations",
     "QueryCache",
     "CachedConnection",
+    # Deprecated (backward compatibility)
+    "MentoConnection",  # Use Connection instead
+    "AsyncMentoConnection",  # Use AsyncConnection instead
 ]

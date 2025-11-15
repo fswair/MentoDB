@@ -17,9 +17,9 @@ from pydantic import BaseModel
 from mentodb import (
     # Core
     Mento,
-    MentoConnection,
+    Connection,
     # Async
-    AsyncMentoConnection,
+    AsyncConnection,
     # Query building
     QueryBuilder,
     # Database management
@@ -51,7 +51,7 @@ def example_basic():
     """Basic CRUD operations."""
     print("\n=== BASIC USAGE ===")
 
-    with MentoConnection("example.db") as conn:
+    with Connection("example.db") as conn:
         db = Mento(conn, default_table="users")
 
         # Create table
@@ -79,7 +79,7 @@ async def example_async():
     """Async database operations."""
     print("\n=== ASYNC SUPPORT ===")
 
-    async with AsyncMentoConnection("example.db") as conn:
+    async with AsyncConnection("example.db") as conn:
         # Create table
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS async_users (
@@ -158,7 +158,7 @@ def example_migrations():
     """Database schema migrations."""
     print("\n=== MIGRATIONS ===")
 
-    with MentoConnection("example.db") as conn:
+    with Connection("example.db") as conn:
         manager = MigrationManager(conn)
         manager.init()
 
@@ -225,7 +225,7 @@ def example_relationships():
     """Foreign keys and relationships."""
     print("\n=== RELATIONSHIPS ===")
 
-    with MentoConnection("example.db") as conn:
+    with Connection("example.db") as conn:
         rm = RelationshipManager(conn)
 
         # Create tables with foreign keys
@@ -267,7 +267,7 @@ def example_indexes():
     """Create and manage indexes."""
     print("\n=== INDEX MANAGEMENT ===")
 
-    with MentoConnection("example.db") as conn:
+    with Connection("example.db") as conn:
         idx_manager = IndexManager(conn)
 
         # Create index
@@ -301,7 +301,7 @@ def example_bulk_operations():
     """Efficient batch processing."""
     print("\n=== BULK OPERATIONS ===")
 
-    with MentoConnection("example.db") as conn:
+    with Connection("example.db") as conn:
         bulk = BulkOperations(conn)
 
         # Bulk insert
@@ -342,7 +342,7 @@ def example_caching():
     """Query result caching."""
     print("\n=== QUERY CACHING ===")
 
-    with MentoConnection("example.db") as conn:
+    with Connection("example.db") as conn:
         # Create cache
         cache = QueryCache(max_size=1000, ttl=300)  # 5 minutes TTL
 

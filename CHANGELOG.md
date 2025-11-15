@@ -5,6 +5,46 @@ All notable changes to MentoDB will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-11-15
+
+### 🎯 API Improvements
+
+- **BREAKING (with backward compatibility)**: Renamed connection classes for clarity
+  - `MentoConnection` → `Connection` (cleaner, more standard)
+  - `AsyncMentoConnection` → `AsyncConnection` (shorter, consistent)
+  - Old names still work as aliases but are deprecated (will be removed in v3.0)
+
+### 🏗️ Project Structure
+
+- **Reorganized to professional `src/` layout**
+  - Moved all modules to `src/mentodb/`
+  - Organized into logical submodules:
+    - `core/` - Core ORM functionality (Connection, Mento, etc.)
+    - `async_api/` - Async database operations
+    - `query/` - Query building tools
+    - `migrations/` - Schema versioning
+    - `schema/` - Indexes & relationships
+    - `performance/` - Optimization features (pool, bulk, cache)
+  - Each submodule has clear purpose and `__init__.py`
+  - Follows modern Python packaging best practices (PEP 420)
+
+### 🔄 Changed
+
+- Updated all internal imports to use new names
+- Updated examples to demonstrate new API
+- Updated tests to use new connection classes
+- Updated `pyproject.toml` for src layout (`package-dir`, `packages.find`)
+
+### 📝 Migration Guide
+
+```python
+# Old (still works, but deprecated)
+from mentodb import MentoConnection, AsyncMentoConnection
+
+# New (recommended)
+from mentodb import Connection, AsyncConnection
+```
+
 ## [2.1.0] - 2025-11-15
 
 ### 🚀 Major Features

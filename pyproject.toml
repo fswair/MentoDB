@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mentodb"
-version = "2.1.0"
+version = "2.1.1"
 description = "A modern, feature-rich SQLite ORM for Python with async support, migrations, and query builder"
 readme = "README.md"
 requires-python = ">=3.12"

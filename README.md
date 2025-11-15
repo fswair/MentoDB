@@ -1,6 +1,6 @@
 # MentoDB 🗄️
 
-[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI Version](https://img.shields.io/pypi/v/mentodb.svg)](https://pypi.org/project/mentodb/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -11,7 +11,7 @@ A modern, type-safe SQLite ORM for Python with Pydantic integration. Built for s
 
 - 🔒 **Secure by Default** - Parameterized queries prevent SQL injection
 - 🎯 **Type-Safe** - Full type hints with Pydantic v2 integration
-- 🚀 **Modern Python** - Leverages Python 3.12+ features
+- 🚀 **Modern Python** - Leverages Python 3.10+ features
 - 🔄 **Context Managers** - Automatic transaction handling
 - 📊 **Multiple Export Formats** - JSON, Pandas DataFrame, or Pydantic models
 - 🧪 **Well Tested** - Comprehensive test suite with pytest
@@ -25,9 +25,10 @@ pip install mentodb
 ```
 
 **Requirements:**
-- Python 3.12 or higher
+- Python 3.10 or higher
 - Pydantic 2.0+
 - Pandas 2.0+
+- typing-extensions 4.0+
 
 ## 🚀 Quick Start
 
@@ -227,7 +228,7 @@ MentoDB 2.0 includes breaking changes. See [MIGRATION.md](MIGRATION.md) for deta
 
 | v1.x | v2.0 |
 |------|------|
-| Python 3.9.6+ | Python 3.12+ |
+| Python 3.9.6+ | Python 3.10+ |
 | Pydantic v1 | Pydantic v2 |
 | String formatting in SQL | Parameterized queries |
 | NumPy dependency | No NumPy (uses `collections.abc`) |

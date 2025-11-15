@@ -1,6 +1,6 @@
 """Async SQLite connection wrapper for MentoDB."""
 import aiosqlite
-from typing import Self
+from typing_extensions import Self
 
 
 class AsyncConnection:

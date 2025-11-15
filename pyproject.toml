@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mentodb"
-version = "2.1.1"
+version = "2.1.2"
 description = "A modern, feature-rich SQLite ORM for Python with async support, migrations, and query builder"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Furkan", email = "fswair@users.noreply.github.com"}
@@ -18,6 +18,8 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Database",
@@ -30,6 +32,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "pandas>=2.0.0",
     "aiosqlite>=0.19.0",
+    "typing-extensions>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -59,11 +62,11 @@ mentodb = ["py.typed"]
 
 [tool.black]
 line-length = 88
-target-version = ["py312"]
+target-version = ["py310"]
 include = '\.pyi?$'
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 88
 select = [
     "E",   # pycodestyle errors
@@ -84,7 +87,7 @@ ignore = [
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

@@ -1,6 +1,6 @@
 from sqlite3 import connect
 import sqlite3
-from typing import Self
+from typing_extensions import Self
 
 
 class Connection:

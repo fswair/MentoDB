@@ -5,6 +5,26 @@ All notable changes to MentoDB will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2025-11-15
+
+### 🐍 Python Version Support
+
+- **Extended Python compatibility to 3.10+**
+  - Changed minimum Python version from 3.12 to 3.10
+  - Added `typing-extensions>=4.0.0` dependency for `Self` type hint backport
+  - Updated all tool configurations (black, ruff, mypy) to target Python 3.10
+  - Now supports Python 3.10, 3.11, 3.12, and 3.13
+
+### 🔄 Changed
+
+- Replaced `typing.Self` with `typing_extensions.Self` for broader compatibility
+- Updated `pyproject.toml` classifiers to include Python 3.10 and 3.11
+- Updated development tool targets to Python 3.10
+
+### 📦 Dependencies
+
+- Added `typing-extensions>=4.0.0` (for `Self` type hint backport)
+
 ## [2.1.1] - 2025-11-15
 
 ### 🎯 API Improvements

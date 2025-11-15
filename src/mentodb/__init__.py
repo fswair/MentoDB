@@ -63,7 +63,7 @@ from typing import TypeVar
 MentoConnection = Connection
 AsyncMentoConnection = AsyncConnection
 
-__version__ = "2.1.1"
+__version__ = "2.1.2"
 __all__ = [
     # Core (new clean names)
     "Mento",

@@ -1,11 +1,11 @@
 import json
 import logging
 import sqlite3
+from collections.abc import Iterable
 from pandas import DataFrame
 from typing import Any, TypeAlias
 from re import search
 import typing
-from numpy import iterable
 from inspect import signature
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
@@ -106,20 +106,20 @@ class Fetch:
     def format(self, values: list[tuple]) -> list[dict]:
         multiple = (
             True
-            if iterable(values)
+            if isinstance(values, Iterable)
             and len(values) > 0
-            and iterable(values[0])
-            and not type(values[0]) == str
+            and isinstance(values[0], Iterable)
+            and not isinstance(values[0], str)
             else False
         )
         if (
-            iterable(values)
+            isinstance(values, Iterable)
             and len(values) > 0
-            and not iterable(values[0])
+            and not isinstance(values[0], Iterable)
             and not len(self.columns) == len(values)
         ):
-            raise Exception(
-                "You have to give a value list has size same with column size."
+            raise ValueError(
+                "Value list size must match column count"
             )
 
         else:
@@ -153,51 +153,68 @@ class MentoExceptions:
             raise BaseException(message)
 
 
-@dataclass
 class AutoResponse:
-    def __init__(self, model: BaseModel = None, datas: list[dict] = None):
-        """A recognizer can convert inputs to specified data model."""
+    """Converts list of dictionaries to Pydantic model instances."""
+
+    def __init__(self, model: type[BaseModel] | None = None, datas: list[dict] | None = None):
+        """
+        Initialize AutoResponse converter.
+
+        Args:
+            model: Pydantic model class to convert data to
+            datas: List of dictionaries to convert
+        """
         self.status: bool = False
         if model and datas:
-            self.model: type = model
+            self.model: type[BaseModel] = model
             self.datas: list[dict] = datas
             self.status = (
-                True
-                if iterable(datas)
-                and type(datas) == list
-                and datas
-                and type(datas[0]) == dict
-                and datas[0]
-                else False
+                isinstance(datas, list)
+                and len(datas) > 0
+                and isinstance(datas[0], dict)
             )
             self.err = MentoExceptions()
             if not self.status:
                 self.err.wrong_data_model()
-            self.sign: dict = self.model.__pydantic_model__.schema()
-            self.properties: dict = self.sign.get("properties")
-            self.attrs: list = sorted(list(self.properties.keys()))
-            self.keys: list = sorted(list(datas[0].keys()))
 
-    def get_response(self) -> list[object]:
-        self.models: list[self.model] = list()
+            # Pydantic v2: Use model_fields instead of schema()
+            self.attrs: list[str] = sorted(list(self.model.model_fields.keys()))
+            self.keys: list[str] = sorted(list(datas[0].keys()))
+
+    def get_response(self) -> list[BaseModel]:
+        """
+        Convert dictionaries to model instances.
+
+        Returns:
+            List of model instances
+
+        Raises:
+            ValueError: If data validation fails
+        """
         if not self.status:
-            self.err.auto(
-                "Your data was wrong thats why i cant return any data response."
+            raise ValueError(
+                "Invalid data: expected list of dictionaries"
             )
+
+        models: list[BaseModel] = []
         for i, data in enumerate(self.datas):
             data_keys = sorted(list(data.keys()))
-            if not data_keys == self.attrs:
-                self.err.auto(
-                    f"The dict with id {i + 1} is incorrect. Please give just ``same type`` data dicts."
+            if data_keys != self.attrs:
+                raise ValueError(
+                    f"Data at index {i} has mismatched keys. "
+                    f"Expected {self.attrs}, got {data_keys}"
                 )
-            else:
-                x = self.__class__()
-                for k, v in data.items():
-                    if not str(k)[0].isalpha():
-                        k = str(f"attr{k}")
-                    setattr(x, k, v)
-                self.models.append(x)
-        return self.models
+
+            # Pydantic v2: Use model validation
+            try:
+                model_instance = self.model(**data)
+                models.append(model_instance)
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to create model instance at index {i}: {e}"
+                ) from e
+
+        return models
 
 
 class Static:
@@ -269,6 +286,11 @@ class Mento:
             table = self.default_table
         if not model:
             model = self.check_model
+
+        # Validate table name to prevent SQL injection
+        if not table or not table.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table}")
+
         parameters = list(signature(model).parameters.values())
         columns = list()
         for param in parameters:
@@ -277,13 +299,15 @@ class Mento:
                 columns.append(column.arg)
         create_query = ", ".join(columns)
         if exists_check:
+            # Table name validation already done above
             self.connection.execute(
                 f"CREATE TABLE IF NOT EXISTS {table} ({create_query})"
             )
         else:
             try:
-                self.connection.execute(f"CREATE TABLE  {table} ({create_query})")
-            except:
+                self.connection.execute(f"CREATE TABLE {table} ({create_query})")
+            except Exception as e:
+                logging.warning(f"Table creation failed: {e}, dropping and recreating")
                 self.drop(table)
                 self.create(table, model, exists_check)
 
@@ -298,24 +322,34 @@ class Mento:
             self.create(table=table, model=models[i], exists_check=exists_check)
 
     def drop(self, table: str = None):
-        """Drop table you want."""
+        """Drop specified table."""
         if not table:
             table = self.default_table
-        self.create(table, model=DefaultModel)
-        self.connection.execute(f"DROP TABLE {table}")
+
+        # Validate table name
+        if not table or not table.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table}")
+
+        query = f"DROP TABLE IF EXISTS {table}"
+        cursor = self.connection.connection.cursor()
+        cursor.execute(query)
+        self.connection.commit()
 
     def insert(
         self, table: str = None, data: dict = dict(), check_model: BaseModel = None
     ):
-        """Insert data to current table."""
+        """Insert data to current table using parameterized queries."""
         if not table:
             table = self.default_table
+
+        # Validate table name
+        if not table or not table.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table}")
 
         if not check_model:
             check_model = self.check_model
 
         if check_model:
-            conditions = []
             unique_args = []
             sign = signature(check_model)
             for param in sign.parameters.values():
@@ -323,41 +357,37 @@ class Mento:
                 if param_check.has_unique_check:
                     unique_args = param_check.unique_args
 
-            for arg in unique_args:
+            if unique_args:
                 fetch = Fetch(self.connection.cursor(), table=table)
-                if arg not in fetch.columns:
-                    raise BaseException("Args are not same with your table.")
-                value = (
-                    f"{arg} = {data[arg]}"
-                    if type(data[arg]) in (int, float)
-                    else f"{arg} = '{data[arg]}'"
-                )
-                conditions.append(value)
-            where_query = " and ".join(conditions)
+                for arg in unique_args:
+                    if arg not in fetch.columns:
+                        raise ValueError(f"Column '{arg}' not found in table '{table}'")
 
-            if conditions:
-                cursor = self.connection.execute(
-                    f"SELECT * FROM {table} where {where_query}"
-                )
+                # Use parameterized query for WHERE clause
+                conditions = [f"{arg} = ?" for arg in unique_args]
+                where_query = " AND ".join(conditions)
+                params = tuple(data[arg] for arg in unique_args)
 
+                cursor = self.connection.connection.cursor()
+                cursor.execute(f"SELECT * FROM {table} WHERE {where_query}", params)
                 fetch = Fetch(cursor)
                 first_data = fetch.first()
                 if first_data:
                     return first_data
 
-        query = ""
-        index = 0
-        for k, v in data.items():
-            if not type(v) == int:
-                query += f"'{v}'{',' if index+1 < len(data.items()) else ''}"
-            else:
-                query += f"{v}{',' if index+1 < len(data.items()) else ''}"
-            index += 1
+        # Use parameterized INSERT query
+        columns = list(data.keys())
+        placeholders = ', '.join('?' * len(columns))
+        column_names = ', '.join(columns)
+        values = tuple(data.values())
 
         try:
-            self.connection.execute(f"INSERT INTO {table} VALUES ({query})")
+            query = f"INSERT INTO {table} ({column_names}) VALUES ({placeholders})"
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query, values)
+            self.connection.commit()
         except sqlite3.IntegrityError as e:
-            logging.error("This content already posted.")
+            logging.error(f"Integrity constraint violation: {e}")
 
     def update(
         self,
@@ -366,43 +396,50 @@ class Mento:
         where: dict = None,
         update_all: bool = False,
     ):
-        """Update matched or all columns."""
+        """Update matched or all columns using parameterized queries."""
         if not table:
             table = self.default_table
+
+        # Validate table name
+        if not table or not table.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table}")
 
         if not update_all and not where:
-            raise BaseException("Unexpected request. Please check your inputs.")
+            raise ValueError("Must provide WHERE clause or set update_all=True")
 
-        if where:
-            conditions = list()
-            fetch = Fetch(self.connection.cursor(), table=table)
-            for key, value in where.items():
-                if key not in fetch.columns:
-                    raise BaseException(f"Your table has no column named `{key}`")
-                if type(value) == int:
-                    value = value
-                else:
-                    value = f"'{value}'"
-                conditions.append(f"{key} = {value}")
-            if len(conditions) == 1:
-                where_statement = conditions[0]
-            else:
-                where_statement = " and ".join(conditions).strip()
+        if not data:
+            raise ValueError("No data provided for update")
 
-        if not table:
-            table = self.default_table
-        queries = list()
-        for k, v in data.items():
-            if not type(v) == int:
-                v = f"'{v}'"
-            queries.append(f"{k}={v}")
-        update_query = ", ".join(queries)
+        # Validate column names
+        fetch = Fetch(self.connection.cursor(), table=table)
+
+        # Build SET clause with parameterized query
+        set_parts = [f"{key} = ?" for key in data.keys()]
+        set_clause = ", ".join(set_parts)
+        params = list(data.values())
+
         if update_all:
-            self.connection.execute(f"UPDATE {table} SET {update_query}")
+            query = f"UPDATE {table} SET {set_clause}"
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query, tuple(params))
+            self.connection.commit()
         else:
-            data = self.connection.execute(
-                f"UPDATE {table} SET {update_query} where {'' if not where_statement else where_statement}"
-            )
+            # Validate WHERE columns
+            for key in where.keys():
+                if key not in fetch.columns:
+                    raise ValueError(f"Column '{key}' not found in table '{table}'")
+
+            # Build WHERE clause
+            where_parts = [f"{key} = ?" for key in where.keys()]
+            where_clause = " AND ".join(where_parts)
+            where_params = list(where.values())
+
+            query = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
+            all_params = params + where_params
+
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query, tuple(all_params))
+            self.connection.commit()
 
     def select(
         self,
@@ -419,193 +456,181 @@ class Mento:
         as_dataframe: bool = False,
         as_json: bool = False,
     ):
-        """Select matched or all columns as lists include Python dict or custom formats (Detailed in Tests)."""
+        """Select matched or all columns using parameterized queries."""
         config = dict(
             model=model, as_model=as_model, as_json=as_json, as_dataframe=as_dataframe
         )
         if as_model and not model:
-            raise self.exceptions.auto(
-                "If you want to get models you have to specify data model."
-            )
-        additions = ""
+            raise ValueError("Model must be specified when as_model=True")
+
         if not from_table:
             from_table = self.default_table
+
+        # Validate table name
+        if not from_table or not from_table.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {from_table}")
+
+        # Validate column names for fetching available columns
+        fetch = Fetch(self.connection.cursor(), table=from_table)
+
+        # Build ORDER BY and LIMIT clauses
+        additions = ""
         if order_by:
-            additions += f"ORDER BY {order_by}"
+            # Validate order_by column name
+            order_col = str(order_by).strip().lower()
+            if order_col not in fetch.columns:
+                raise ValueError(f"Column '{order_by}' not found for ORDER BY")
+            additions += f" ORDER BY {order_col}"
 
         if limit > 0:
-            additions += f" LIMIT {limit}"
+            additions += f" LIMIT {int(limit)}"
 
+        # Determine SELECT columns
+        if select_all and not select_column:
+            select_cols = "*"
+        elif select_column:
+            # Validate select_column
+            if select_column not in fetch.columns:
+                raise ValueError(f"Column '{select_column}' not found")
+            select_cols = select_column
+        else:
+            select_cols = "*"
+
+        # Handle WHERE clause with parameterized queries
         if where:
-            conditions = list()
-            fetch = Fetch(self.connection.cursor(), table=from_table)
-            for key, value in where.items():
+            # Validate WHERE columns
+            for key in where.keys():
                 if key not in fetch.columns:
-                    raise self.exceptions.auto(
-                        f"Your table has no column named `{key}`"
-                    )
-                if type(value) in (int, float):
-                    value = value
-                else:
-                    value = f"'{value}'"
-                conditions.append(f"{key} = {value}")
-            where_statement = " and ".join(conditions).strip()
-            cursor = self.connection.execute(
-                f"SELECT {'*' if select_all and not select_column else select_column} FROM {from_table} where {where_statement} {additions} "
-            )
+                    raise ValueError(f"Column '{key}' not found in table '{from_table}'")
+
+            # Build parameterized WHERE clause
+            where_parts = [f"{key} = ?" for key in where.keys()]
+            where_statement = " AND ".join(where_parts)
+            where_params = tuple(where.values())
+
+            query = f"SELECT {select_cols} FROM {from_table} WHERE {where_statement}{additions}"
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query, where_params)
             fetch = Fetch(cursor)
+
             if select_all:
                 response = Static(fetch.all(), **config)
                 return response.data
             response = Static(fetch.first(), **config)
             return response.data
+
         if not regexp and not filter:
-            query = self.connection.execute(
-                f"SELECT {'*' if select_all and not select_column else select_column} FROM {from_table} {additions}"
-            )
-            fetch = Fetch(query)
+            query = f"SELECT {select_cols} FROM {from_table}{additions}"
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query)
+            fetch = Fetch(cursor)
             response = Static(fetch.all(), **config)
             return response.data
         else:
             if filter:
                 if not callable(filter):
-                    raise self.exceptions.auto(
-                        "Filter must be lambda with one argument, also this filter is not callable."
+                    raise ValueError(
+                        "Filter must be a callable (lambda) with one argument"
                     )
-                else:
-                    query = self.connection.execute(
-                        f"SELECT *  FROM {from_table} {additions}"
-                    )
-                    fetch = Fetch(query)
-                    datas = fetch.all()
-                    matches = list()
-                    for data in datas:
-                        filter_args = filter.__code__.co_varnames
-                        data_index = (
-                            filter_args[0]
-                            if iterable(filter_args) and len(filter_args) > 0
-                            else -1
-                        )
-                        if data_index == -1:
-                            raise self.exceptions.auto(
-                                "No argument supplied to filter. Please, specifiy column name as argument."
-                            )
-                        else:
-                            if filter(data[data_index]):
-                                matches.append(data)
-                    response = Static(matches, **config)
-                    return response.data
-            elif regexp:
-                query = self.connection.execute(
-                    f"SELECT *  FROM {from_table} {additions}"
-                )
-                fetch = Fetch(query)
-                datas = fetch.all()
-                column = str(list(regexp.keys())[0]).lower()
-                matches = list()
-                if iterable(datas) and type(datas) == list:
-                    for data in datas:
-                        if iterable(regexp[column]):
-                            for regex in regexp[column]:
-                                if column not in fetch.columns:
-                                    raise BaseException(
-                                        f"Current table has no column named `{column}`."
-                                    )
-                                has_match = self.regexp(
-                                    regex,
-                                    str(
-                                        data[fetch.columns[fetch.columns.index(column)]]
-                                    ),
-                                )
-                                if has_match:
-                                    matches.append(data)
-                    response = Static(matches, **config)
-                    return response.data
-                else:
-                    if iterable(regexp[column]):
-                        for regex in regexp[column]:
-                            data = datas[fetch.columns[fetch.columns.index(column)]]
-                            has_match = self.regexp(regex, str(data))
-                            if has_match:
-                                matches.append(data)
-                    response = Static(matches, **config)
-                    return response.data
 
-            if select_all:
-                fetch = Fetch(f"SELECT * FROM {from_table}")
+                query = f"SELECT * FROM {from_table}{additions}"
+                cursor = self.connection.connection.cursor()
+                cursor.execute(query)
+                fetch = Fetch(cursor)
+                datas = fetch.all()
+                matches = []
+
+                for data in datas:
+                    filter_args = filter.__code__.co_varnames
+                    if not filter_args:
+                        raise ValueError(
+                            "Filter function must have at least one argument (column name)"
+                        )
+
+                    data_index = filter_args[0]
+                    if filter(data[data_index]):
+                        matches.append(data)
+
                 response = Static(matches, **config)
                 return response.data
 
-    def delete(self, table: str, where: dict = dict(), delete_all: bool = False):
-        """Delete matched or all columns."""
+            elif regexp:
+                query = f"SELECT * FROM {from_table}{additions}"
+                cursor = self.connection.connection.cursor()
+                cursor.execute(query)
+                fetch = Fetch(cursor)
+                datas = fetch.all()
+
+                if not regexp:
+                    return []
+
+                column = str(list(regexp.keys())[0]).lower()
+                if column not in fetch.columns:
+                    raise ValueError(
+                        f"Column '{column}' not found in table '{from_table}'"
+                    )
+
+                matches = []
+                patterns = regexp[column]
+                if not isinstance(patterns, list):
+                    patterns = [patterns]
+
+                if isinstance(datas, list):
+                    for data in datas:
+                        for regex in patterns:
+                            col_idx = fetch.columns.index(column)
+                            has_match = self.regexp(regex, str(data[col_idx]))
+                            if has_match:
+                                matches.append(data)
+                                break  # No need to check other patterns for this row
+                    response = Static(matches, **config)
+                    return response.data
+                else:
+                    for regex in patterns:
+                        col_idx = fetch.columns.index(column)
+                        has_match = self.regexp(regex, str(datas[col_idx]))
+                        if has_match:
+                            matches.append(datas)
+                            break
+                    response = Static(matches, **config)
+                    return response.data
+
+            return []
+
+    def delete(self, table: str, where: dict = None, delete_all: bool = False):
+        """Delete matched or all rows using parameterized queries."""
+        # Validate table name
+        if not table or not table.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table}")
+
         if delete_all:
-            self.connection.execute(f"DELETE FROM {table}")
+            query = f"DELETE FROM {table}"
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query)
+            self.connection.commit()
         else:
-            if where:
-                conditions = list()
-                fetch = Fetch(self.connection.cursor(), table=table)
-                for key, value in where.items():
-                    if key not in fetch.columns:
-                        raise BaseException(f"Your table has no column named `{key}`")
-                    if type(value) in (int, float):
-                        value = value
-                    else:
-                        value = f"'{value}'"
-                    conditions.append(f"{key} = {value}")
-                where_statement = " and ".join(conditions).strip()
-                self.connection.execute(f"DELETE FROM {table} where {where_statement}")
-            else:
-                raise BaseException(
-                    "Please add where statement or set delete_all as true to delete all rows."
+            if not where:
+                raise ValueError(
+                    "Must provide WHERE clause or set delete_all=True"
                 )
+
+            # Validate column names
+            fetch = Fetch(self.connection.cursor(), table=table)
+            for key in where.keys():
+                if key not in fetch.columns:
+                    raise ValueError(f"Column '{key}' not found in table '{table}'")
+
+            # Build parameterized WHERE clause
+            where_parts = [f"{key} = ?" for key in where.keys()]
+            where_statement = " AND ".join(where_parts)
+            where_params = tuple(where.values())
+
+            query = f"DELETE FROM {table} WHERE {where_statement}"
+            cursor = self.connection.connection.cursor()
+            cursor.execute(query, where_params)
+            self.connection.commit()
 
     def regexp(self, pattern: str, string: str | bytes) -> bool:
         """If pattern has a match with given string, returns True, else return False."""
         match = search(pattern, str(string))
         return bool(match)
-
-
-@dataclass
-class AutoResponse:
-    def __init__(self, model=None, datas: list[dict] = None):
-        self.status: bool = False
-        self.err = MentoExceptions()
-        if model and datas:
-            self.model: type = model
-            self.datas: list[dict] = datas
-            self.status = (
-                True
-                if iterable(datas)
-                and type(datas) == list
-                and datas
-                and type(datas[0]) == dict
-                and datas[0]
-                else False
-            )
-            if not self.status:
-                self.err.wrong_data_model()
-            self.sign: dict = self.model.__pydantic_model__.schema()
-            self.properties: dict = self.sign.get("properties")
-            self.attrs: list = sorted(list(self.properties.keys()))
-            self.keys: list = sorted(list(datas[0].keys()))
-
-    def get_response(self) -> list[object]:
-        self.models: list[self.model] = list()
-        if not self.status:
-            self.err.auto(
-                "Your data was wrong thats why i cant return any data response."
-            )
-        for i, data in enumerate(self.datas):
-            data_keys = sorted(list(data.keys()))
-            if not data_keys == self.attrs:
-                self.err.auto(
-                    f"The dict with id {i + 1} is incorrect. Please give just ``same type`` data dicts."
-                )
-            else:
-                x = self.__class__()
-                for k, v in data.items():
-                    if str(k[0]).isdigit():
-                        k = str(f"w{k}")
-                    setattr(x, k, v)
-                self.models.append(x)
-        return self.models

@@ -5,6 +5,81 @@ All notable changes to MentoDB will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-11-15
+
+### 🚀 Major Features
+
+- **Async Support** - Full async/await support with `AsyncMentoConnection`
+  - Use `aiosqlite` for async database operations
+  - Compatible with `asyncio` applications
+  - Context manager support with `async with`
+
+- **Query Builder** - Fluent API for building SQL queries
+  - Method chaining for readable queries
+  - Support for complex joins, subqueries, and aggregations
+  - Automatic parameter binding
+  - Example: `QueryBuilder("users").select("*").where("age", ">", 18).limit(10).build()`
+
+- **Database Migrations** - Schema versioning and migration system
+  - Track database schema changes
+  - Apply/rollback migrations
+  - Export/import schema
+  - Migration status tracking
+
+- **Connection Pooling** - Thread-safe connection pool
+  - Reuse connections efficiently
+  - Configurable pool size
+  - Automatic connection management
+
+- **Relationships** - Foreign key and JOIN support
+  - Define and manage foreign keys
+  - One-to-one, one-to-many, many-to-many relationships
+  - Simplified JOIN queries
+  - Foreign key constraint validation
+
+- **Index Management** - Create and manage database indexes
+  - Create/drop indexes programmatically
+  - List all indexes
+  - Analyze index performance
+  - Support for unique indexes
+
+- **Bulk Operations** - Efficient batch processing
+  - Bulk insert (batch import)
+  - Bulk update
+  - Bulk delete
+  - Bulk upsert (INSERT OR REPLACE)
+  - Configurable batch sizes
+
+- **Query Caching** - LRU cache with TTL support
+  - Cache query results for performance
+  - Configurable cache size and TTL
+  - Automatic cache invalidation
+  - Cache statistics and hit/miss tracking
+
+### ✨ Added
+
+- `AsyncMentoConnection` - Async connection wrapper
+- `QueryBuilder` - Fluent query builder
+- `Migration` and `MigrationManager` - Migration system
+- `ConnectionPool` - Connection pooling
+- `RelationshipManager` and `ForeignKey` - Relationship management
+- `IndexManager` - Index management
+- `BulkOperations` - Batch operations
+- `QueryCache` and `CachedConnection` - Result caching
+- New dependency: `aiosqlite>=0.19.0`
+
+### 📝 Documentation
+
+- Updated README with new features
+- Added examples for all new features
+- Updated API documentation
+
+### 🔄 Changed
+
+- Version bumped to 2.1.0
+- Updated package description
+- Added new keywords for discoverability
+
 ## [2.0.0] - 2025-11-15
 
 ### 🔒 Security

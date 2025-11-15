@@ -17,8 +17,9 @@ New in 2.1:
 """
 
 # Core components
-from .utils import (
+from .core import (
     Mento,
+    MentoConnection,
     PrimaryKey,
     Column,
     Fetch,
@@ -26,20 +27,19 @@ from .utils import (
     MentoExceptions,
     Static,
     AutoResponse,
+    DefaultModel,
 )
-from .connection import MentoConnection
-from .models import DefaultModel
 
 # Async support
-from .async_connection import AsyncMentoConnection
+from .async_api import AsyncMentoConnection
 
 # Query building
-from .query_builder import QueryBuilder
+from .query import QueryBuilder
 
 # Database management
 from .migrations import Migration, MigrationManager
-from .indexes import IndexManager
-from .relationships import (
+from .schema import (
+    IndexManager,
     RelationshipManager,
     ForeignKey,
     RelationType,
@@ -47,16 +47,19 @@ from .relationships import (
 )
 
 # Performance features
-from .connection_pool import ConnectionPool
-from .bulk_operations import BulkOperations
-from .cache import QueryCache, CachedConnection
+from .performance import (
+    ConnectionPool,
+    BulkOperations,
+    QueryCache,
+    CachedConnection,
+)
 
 # External dependencies
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 from typing import TypeVar
 
-__version__ = "2.1"
+__version__ = "2.1.0"
 __all__ = [
     # Core
     "Mento",

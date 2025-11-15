@@ -49,7 +49,10 @@ Repository = "https://github.com/fswair/MentoDB"
 Issues = "https://github.com/fswair/MentoDB/issues"
 
 [tool.setuptools]
-packages = ["MentoDB"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 mentodb = ["py.typed"]

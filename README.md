@@ -1,139 +1,313 @@
-# MentoDB
-Sqlite3 based powerful database project.
+# MentoDB 🗄️
 
-# Install with pip just one step
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI Version](https://img.shields.io/pypi/v/mentodb.svg)](https://pypi.org/project/mentodb/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-```cmd
-pip3 install mentodb
+A modern, type-safe SQLite ORM for Python with Pydantic integration. Built for simplicity, security, and developer experience.
+
+## ✨ Features
+
+- 🔒 **Secure by Default** - Parameterized queries prevent SQL injection
+- 🎯 **Type-Safe** - Full type hints with Pydantic v2 integration
+- 🚀 **Modern Python** - Leverages Python 3.10+ features
+- 🔄 **Context Managers** - Automatic transaction handling
+- 📊 **Multiple Export Formats** - JSON, Pandas DataFrame, or Pydantic models
+- 🧪 **Well Tested** - Comprehensive test suite with pytest
+- 🎨 **Clean API** - Intuitive, Pythonic interface
+- ⚡ **Zero Config** - Works out of the box
+
+## 📦 Installation
+
+```bash
+pip install mentodb
 ```
-also;
-[PyPI Page for MentoDB](https://pypi.org/project/mentodb)
 
-#### Requirements:
-* `Python 3.9.6 or greater version`
-* `pydantic` -> `pip install pydantic`
-* `pandas` -> `pip install pandas`
-* `numpy` -> `pip install numpy`
+**Requirements:**
+- Python 3.10 or higher
+- Pydantic 2.0+
+- Pandas 2.0+
+- typing-extensions 4.0+
 
-* Import these two module before start:
+## 🚀 Quick Start
+
 ```python
+from mentodb import Mento, MentoConnection
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
-```
 
-## Working with Base Models
-The following code demonstrates how to work with base models in Python using `pydantic` and `dataclasses`.
-
-### _Creating a Model Extended from Base Model_
-The following code creates a model named `MyModel` that extends from `BaseModel`:
-```python
-@dataclass
-class MyModel(BaseModel):
+# Define your model
+class User(BaseModel):
     id: int
     name: str
-    job: str
-    price: int
-```
-### _Creating a SQL Table with a Model_
-Here's an example of how to create a SQL table with the `MyModel` model:
-```python
-# Initialize a connection with MentoConnection (similar to "sqlite3.Connection")
-con = MentoConnection("./database/new.db", check_same_thread=False)
-
-# Create a database cursor with the connection object.
-cursor = Mento(con)
-
-# Create a table with the following structure: (id int, name text, job text, price int)
-cursor.create("sample_table", model=MyModel)
-```
-### _Using Primary Key and Unique Column Matches When Creating Tables_
-Primary Key:
-```python
-@dataclass
-class PrimaryKeySample(BaseModel):
-    id: PrimaryKey(int)
-    name: str
+    email: str
     age: int
-    price: int
 
-# Create a table with the following structure: (id int primary key, name text, age int, price int)
-cursor.create("primary_sample", model=PrimaryKeySample)
+# Create connection with context manager
+with MentoConnection("myapp.db") as conn:
+    db = Mento(conn, default_table="users")
+
+    # Create table
+    db.create("users", model=User)
+
+    # Insert data
+    db.insert("users", data={
+        "id": 1,
+        "name": "Alice",
+        "email": "alice@example.com",
+        "age": 30
+    })
+
+    # Query data
+    users = db.select(from_table="users", where={"name": "Alice"})
+    print(users)  # [{'id': 1, 'name': 'Alice', 'email': 'alice@example.com', 'age': 30}]
 ```
-Unique Matches:
+
+## 📖 Documentation
+
+### Creating Tables
+
 ```python
-@dataclass
-class Sample(BaseModel):
-    id: PrimaryKey(int)
+from mentodb import Mento, MentoConnection, PrimaryKey
+from pydantic import BaseModel
+
+class Product(BaseModel):
+    id: int
     name: str
-    age: int
-    price: int
-    check_match: UniqueMatch("id", "name")
+    price: float
+    stock: int
 
-# Create a table with unique match control.
-cursor.create("unique_matches_sample", model=Sample)
-
-# Set the check_model parameter to check if there are matches.
-# If the table has matched data, the insert process will be stopped.
-cursor.check_model = Sample
+with MentoConnection("store.db") as conn:
+    db = Mento(conn)
+    db.create("products", model=Product)
 ```
-## Data Statements
-### _Create_
-* Create a table if it does not already exist:
+
+### CRUD Operations
+
+#### Insert
+
 ```python
-cursor.create("sample", model=Sample)
+# Single insert
+db.insert("products", data={
+    "id": 1,
+    "name": "Laptop",
+    "price": 999.99,
+    "stock": 50
+})
 ```
-* Create a table without checking if it already exists:
+
+#### Select
+
 ```python
-cursor.create("sample", model=Sample, exists_check=False)
+# Select all
+all_products = db.select(from_table="products")
+
+# Select with WHERE clause
+laptops = db.select(
+    from_table="products",
+    where={"name": "Laptop"}
+)
+
+# Select with ORDER BY and LIMIT
+top_products = db.select(
+    from_table="products",
+    order_by="price",
+    limit=10
+)
+
+# Select specific columns
+names = db.select(
+    from_table="products",
+    select_column="name"
+)
 ```
-* Create multiple tables:
+
+#### Update
+
 ```python
-cursor.create_many(dict(first=MyModel, second=PrimaryKeySample, third=Sample))
+# Update specific rows
+db.update(
+    "products",
+    data={"stock": 45},
+    where={"id": 1}
+)
+
+# Update all rows
+db.update(
+    "products",
+    data={"stock": 0},
+    update_all=True
+)
 ```
-### _Insert_
+
+#### Delete
+
 ```python
-cursor.insert(
-    "sample",
-    data=dict(id=1, name="fswair", age=18, price=4250),
-    # If your model has a UniqueMatch control and you want to check matches, set the model with the check_model keyword argument.
-    check_model=Sample
-    )
+# Delete specific rows
+db.delete("products", where={"id": 1})
+
+# Delete all rows
+db.delete("products", delete_all=True)
 ```
-### _Select_
-* Return all rows as a list of dictionaries:
+
+### Advanced Features
+
+#### Lambda Filters
+
 ```python
-cursor.select("sample")
-# Output: [{id: 1, name: fswair, age: 18, price: 4250}]
+# Filter with custom lambda function
+expensive_products = db.select(
+    from_table="products",
+    filter=lambda price: price > 500
+)
 ```
-## SELECT
-The following are the different methods for returning data from the table using the `select` statement in the `cursor` object:
-* `cursor.select("sample")`: Returns all rows as `list[dict]` -> `[{id: 1, name: fswair, age: 18, price: 4250}]`
 
-* `cursor.select("sample", where={"id": 1, "name": "fswair"})`: Returns all rows matched with the where condition. The condition looks like (in SQL): `SELECT * FROM TABLE WHERE id = 1 AND name = 'fswair'`.
+#### Regular Expression Matching
 
-* `cursor.select("sample", where={"id": 1, "name": "fswair"}, order_by="id")`: Returns all rows matched with the where condition sorted as `ORDER BY`. The condition looks like (in SQL): `SELECT * FROM TABLE WHERE id = 1 AND name = 'fswair' ORDER BY id`.
-
-* `cursor.select("sample", select_column="id")`: Returns all row's id columns as `list[dict]` -> `[{id: 1}, {id: 2}]`
-
-* `cursor.select("sample", filter=lambda id: id % 3 == 0)`: Returns all rows matched with the lambda filter (lambda arg must be column name). Example output: `list[dict]` -> `[{id: 3, name: fswair, age: 18, price: 4250}]`.
-
-* `cursor.select("sample", regexp={"id": ["\d{1,3}"]})`: Returns all rows matched with regexp patterns (regexp dict must be one key as column name, value could be pattern or list of patterns). Example output: `list[dict]` -> `[{id: 999, name: fswair, age: 18, price: 4250}]`.
-
-### _Response Formatters for Select Statement_
-The following are the response formatters for the select statement:
-* `cursor.select("table", as_json=True)`: Returns data as JSON.
-
-* `cursor.select("table", as_dataframe=True)`: Returns data as a DataFrame (using Pandas).
-
-* `cursor.select("table", as_dataframe=True).to_csv()`: Returns data as a CSV file.
-
-* `cursor.select("table", model=Sample, as_model=True)`: Returns object list (accessible with attributes).
-## UPDATE
-The following updates the data matched with the where condition:
 ```python
-cursor.update(
-    "sample",
-    set_data=dict(name="fswair-up", age=20),
-    where={"id": 1, "name": "fswair"}
-    )
+# Match with regex patterns
+tech_products = db.select(
+    from_table="products",
+    regexp={"name": [r"Laptop", r"Phone", r"Tablet"]}
+)
 ```
+
+#### Response Formatters
+
+```python
+# Get as JSON
+json_data = db.select(from_table="products", as_json=True)
+
+# Get as Pandas DataFrame
+df = db.select(from_table="products", as_dataframe=True)
+
+# Get as Pydantic models
+products = db.select(
+    from_table="products",
+    model=Product,
+    as_model=True
+)
+# Returns: list[Product]
+```
+
+#### Unique Constraints
+
+```python
+from mentodb import UniqueMatch
+
+class User(BaseModel):
+    id: int
+    username: str
+    email: str
+    unique_check: UniqueMatch("username", "email")
+
+# Insert will check uniqueness
+db.insert("users", data={...}, check_model=User)
+```
+
+### Connection Management
+
+```python
+# Manual connection management
+conn = MentoConnection("mydb.db", timeout=10.0)
+db = Mento(conn)
+# ... do work ...
+conn.close()
+
+# With context manager (recommended)
+with MentoConnection("mydb.db") as conn:
+    db = Mento(conn)
+    # Automatic commit on success, rollback on exception
+```
+
+## 🔄 Migration from v1.x
+
+MentoDB 2.0 includes breaking changes. See [MIGRATION.md](MIGRATION.md) for detailed upgrade instructions.
+
+### Key Changes
+
+| v1.x | v2.0 |
+|------|------|
+| Python 3.9.6+ | Python 3.10+ |
+| Pydantic v1 | Pydantic v2 |
+| String formatting in SQL | Parameterized queries |
+| NumPy dependency | No NumPy (uses `collections.abc`) |
+| `BaseException` | `ValueError` for validation |
+| Manual transaction handling | Context managers |
+
+### Quick Migration Example
+
+**Before (v1.x):**
+```python
+from mentodb import Mento, MentoConnection
+
+conn = MentoConnection("db.sqlite")
+db = Mento(conn)
+# ... operations ...
+conn.close()
+```
+
+**After (v2.0):**
+```python
+from mentodb import Mento, MentoConnection
+
+with MentoConnection("db.sqlite") as conn:
+    db = Mento(conn)
+    # ... operations ...
+    # Auto-commit/rollback
+```
+
+## 🧪 Development
+
+### Setup
+
+```bash
+git clone https://github.com/fswair/MentoDB.git
+cd MentoDB
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+pytest
+pytest --cov=mentodb --cov-report=html
+```
+
+### Code Quality
+
+```bash
+# Format code
+black .
+
+# Lint
+ruff check .
+
+# Type checking
+mypy .
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Pydantic](https://docs.pydantic.dev/)
+- Inspired by modern ORM design patterns
+- Created and maintained by [@fswair](https://github.com/fswair)
+
+## 📊 Project Stats
+
+- ⭐ Star this repo if you find it useful!
+- 🐛 [Report bugs](https://github.com/fswair/MentoDB/issues)
+- 💡 [Request features](https://github.com/fswair/MentoDB/issues)
+- 📖 [Read the docs](https://github.com/fswair/MentoDB#readme)
+
+---
+
+**Note:** This is version 2.0 with breaking changes from 1.x. See [CHANGELOG.md](CHANGELOG.md) for details.
